@@ -7,7 +7,7 @@ var wgl = require('w-gl');
 export default function createScene(canvas) {
   var scene = wgl.scene(canvas);
   var graph = appState.getGraph();
-  var layout = createLayout(graph);
+  var layout = createLayout(graph, cleanUpSettings(appState.settings));
   var renderCtx;
 
   scene.setClearColor(12/255, 41/255, 82/255, 1)
@@ -16,8 +16,27 @@ export default function createScene(canvas) {
   var nextFrame = requestAnimationFrame(frame)
 
   return {
-    dispose
+    dispose,
+    updateLayoutParam
   };
+
+  function updateLayoutParam(settings) {
+    layout.updateSettings(cleanUpSettings(settings));
+  }
+
+  function cleanUpSettings(unsafeSettings) {
+    var s = {};
+    var k1 = parseFloat(unsafeSettings.k1);
+    if (Number.isFinite(k1)) s.k1 = k1;
+
+    var k2 = parseFloat(unsafeSettings.k2);
+    if (Number.isFinite(k2)) s.k2 = k2;
+
+    var k3 = parseFloat(unsafeSettings.k3);
+    if (Number.isFinite(k3)) s.k3 = k3;
+
+    return s;
+  }
 
   function dispose() {
     scene.dispose();
@@ -49,7 +68,7 @@ export default function createScene(canvas) {
       bbox.addPoint(to.x, to.y);
 
     });
-    bbox.growBy(200)
+    bbox.growBy(bbox.width * 0.1)
     var dpp = window.devicePixelRatio;
 
     scene.setViewBox({

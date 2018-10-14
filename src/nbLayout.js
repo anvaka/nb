@@ -3,24 +3,26 @@
 
 import BBox from './BBox';
 
-export default function nbLayout(graph) {
+export default function nbLayout(graph, settings) {
   const random = require('ngraph.random').random(42)
 
   var api = {
     getNodePosition,
     step,
-    setNodePosition
+    setNodePosition,
+    updateSettings
   };
 
-  var desiredWidth = 3000;
-  var desiredHeight = 3000;
-  var ik1 = 0.5;
-  var ik2 = 0.6;
-  var ik3 = 0.06;
-  var current = 0;
+  var desiredWidth = 300;
+  var desiredHeight = 300;
+  var k1 = 0.5;
+  var k2 = 0.6;
+  var k3 = 0.06;
   var edgeLength = 100;
 
-  var r, k1, k2, k3;
+  if (settings) {
+    updateSettings(settings);
+  }
   var nodes = new Map();
   var maxDegree = 0;
   var maxAggDeg = 0;
@@ -31,6 +33,13 @@ export default function nbLayout(graph) {
   initLayout();
   
   return api;
+
+  function updateSettings(newSettings) {
+    if (!newSettings) return;
+    if (Number.isFinite(newSettings.k1)) k1 = newSettings.k1;
+    if (Number.isFinite(newSettings.k2)) k2 = newSettings.k2;
+    if (Number.isFinite(newSettings.k3)) k3 = newSettings.k3;
+  }
 
   function initLayout() {
     graph.forEachNode(function(node) {
@@ -64,10 +73,6 @@ export default function nbLayout(graph) {
   function getNodePosition(nodeId) {
     var p = nodes.get(nodeId);
     return p;
-    // return {
-    //   x: p.x,
-    //   y: p.y
-    // }
   }
 
   function setNodePosition(nodeId, x, y) {
@@ -77,11 +82,6 @@ export default function nbLayout(graph) {
   }
 
   function step() {
-    r = 1;//1 - current/settings.steps;
-    k1 = r * ik1;
-    k2 = r * ik2;
-    k3 = r * ik3;
-    current += 1;
     rescale();
     minimizeEdgeCrossings();
     minimizeEdgeLengthDifference();
@@ -200,12 +200,14 @@ export default function nbLayout(graph) {
       // for some reason swapping source point here works better for grid graphs
       var toDeg = getDeg(link.toId);
       var tR = toDeg/maxDegree;
+      tR = 1;
       toPos.incX += toPos.x + k2 * (desLength - l) * dx/l * tR;
       toPos.incY += toPos.y + k2 * (desLength - l) * dy/l * tR;
       toPos.incLength += 1;
 
       var fromDeg = getDeg(link.toId);
       var tF = fromDeg/maxDegree;
+      tF = 1;
       formPos.incX += formPos.x - k2 * (desLength- l) * dx/l * tF;
       formPos.incY += formPos.y - k2 * (desLength- l) * dy/l  * tF;
       formPos.incLength += 1;
@@ -236,60 +238,37 @@ export default function nbLayout(graph) {
       if (node.ascending === undefined) {
         node.ascending = Math.random() < 0.5;
       }
-      // //1;//
-      var ascending = node.ascending; // Math.random() > 0.50;
-       neighbors.sort((a, b) => a.angle - b.angle);
+      // node.ascending; //
+      var ascending = Math.random() > 0.50;
+      neighbors.sort((a, b) => a.angle - b.angle);
 
-      var dangle = 2 * Math.PI / neighbors.length;
+      var desiredAngle = 2 * Math.PI / neighbors.length;
+      var direction = ascending ? 1 : -1;
 
-      if (ascending) {
-        for (var i = 0; i < neighbors.length; ++i) {
-          var curr = neighbors[i];
-          var next, curAngle;
-          if (i === neighbors.length - 1) {
-            next = neighbors[0]; 
-            curAngle = 2 * Math.PI - curr.angle + next.angle; 
-          } else {
-            next = neighbors[i + 1];
-            curAngle = next.angle - curr.angle;
-          }
+      for (var i = 0; i < neighbors.length; ++i) {
+        var curr = neighbors[i];
+        var next, curAngle;
+        var nextIndex = i + direction;
+        if (nextIndex === neighbors.length) nextIndex = 0;
+        if (nextIndex < 0) nextIndex = neighbors.length - 1;
 
-          if(Math.abs(curAngle) < dangle) continue;
+        next = neighbors[nextIndex];
+        curAngle = (next.angle - curr.angle) * direction;
 
-          var otherPos = curr.pos;
-          var newAngle = curr.strength * k3 * (curAngle - dangle)
-          var rPoint = rotate(currentPos, otherPos, newAngle);
-          otherPos.incX += rPoint.x;
-          otherPos.incY += rPoint.y;
-          otherPos.incLength += 1;
-        }
-      } else {
-        for (var i = neighbors.length - 1; i >= 0; --i) {
-          var curr = neighbors[i];
-          var next, curAngle;
-          if (i === 0) {
-            next = neighbors[neighbors.length - 1]; 
-            curAngle = curr.angle + 2 * Math.PI - next.angle; 
-          } else {
-            next = neighbors[i - 1];
-            curAngle = curr.angle - next.angle;
-          }
+        if (curAngle < 0) curAngle += 2 * Math.PI;
 
-          if (curAngle < dangle) continue;
+        if (curAngle < desiredAngle) continue;
 
-          var otherPos = curr.pos;
-          var newAngle = curr.strength * k3 * (-curAngle + dangle)
-          var rPoint = rotate(currentPos, otherPos, newAngle);
-          otherPos.incX += rPoint.x;
-          otherPos.incY += rPoint.y;
-          otherPos.incLength += 1;
-        }
+        var otherPos = curr.pos;
+        var newAngle = curr.strength * k3 * (curAngle - desiredAngle) * direction;
+        var rPoint = rotate(currentPos, otherPos, newAngle);
+        otherPos.incX += rPoint.x;
+        otherPos.incY += rPoint.y;
+        otherPos.incLength += 1;
       }
-
     });
 
     processIncomingMessages();
-
   }
 
   function rotate(center, point, alpha) {
