@@ -3,6 +3,8 @@
 
 import BBox from './BBox';
 
+// The algorithm is inspired by this paper https://ccl.northwestern.edu/2018/galan2018.pdf
+// I modified a few things, and mostly using this to test ideas.
 export default function nbLayout(graph, settings) {
   const random = require('ngraph.random').random(42)
 
@@ -13,8 +15,8 @@ export default function nbLayout(graph, settings) {
     updateSettings
   };
 
-  var desiredWidth = 300;
-  var desiredHeight = 300;
+  var desiredWidth = 1300;
+  var desiredHeight = 1300;
   var k1 = 0.5;
   var k2 = 0.6;
   var k3 = 0.06;
@@ -239,13 +241,18 @@ export default function nbLayout(graph, settings) {
         node.ascending = Math.random() < 0.5;
       }
       // node.ascending; //
-      var ascending = Math.random() > 0.50;
+      var ascending = node.ascending; // Math.random() > 0.50;
       neighbors.sort((a, b) => a.angle - b.angle);
 
       var desiredAngle = 2 * Math.PI / neighbors.length;
       var direction = ascending ? 1 : -1;
 
-      for (var i = 0; i < neighbors.length; ++i) {
+      // for (var i = 0; i < neighbors.length; ++i) {
+      var idx = 0;
+      var startFrom = Math.round(Math.random() * (neighbors.length - 1));
+      while (idx < neighbors.length) {
+        var i = (startFrom + idx) % neighbors.length;
+        idx += 1;
         var curr = neighbors[i];
         var next, curAngle;
         var nextIndex = i + direction;

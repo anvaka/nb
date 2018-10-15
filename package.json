@@ -10,6 +10,7 @@
     "build": "node build/build.js"
   },
   "dependencies": {
+    "kdbush": "^3.0.0",
     "miserables": "^1.0.1",
     "ngraph.events": "0.0.4",
     "ngraph.fromdot": "^0.2.0",
