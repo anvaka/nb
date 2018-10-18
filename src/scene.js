@@ -35,6 +35,8 @@ export default function createScene(canvas) {
     var k3 = parseFloat(unsafeSettings.k3);
     if (Number.isFinite(k3)) s.k3 = k3;
 
+    var k4 = parseFloat(unsafeSettings.k4);
+    if (Number.isFinite(k4)) s.k4 = k4;
     return s;
   }
 
