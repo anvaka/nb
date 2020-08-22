@@ -21,6 +21,8 @@ var settings = qs.get();
 
 const appState = {
   getGraph,
+  setGraph,
+  graph: gen.grid(10, 10),
   settings: {
     k1: settings.k1, 
     k2: settings.k2,
@@ -35,25 +37,35 @@ qs.onChange(function(appState) {
 
 export default appState
 
+function setGraph(newGraph) {
+  appState.graph = newGraph;
+}
+
 function getGraph() {
-  var generator = gen[settings.graph];
-  if (generator) {
-    return generator(settings.p0, settings.p1, settings.p2);
-  }
-  return require('miserables').create()
-  // // var g = createGraph();
-  // // g.addLink('a', 'b');
-  // // g.addLink('a', 'c');
-  // // g.addLink('a', 'f');
-  // // g.addLink('a', 'g');
+  return appState.graph;
+  // var generator = gen[settings.graph];
+  // if (generator) {
+  //   return generator(settings.p0, settings.p1, settings.p2);
+  // }
+  //return require('miserables').create()
+//   var g = createGraph();
+//   g.addLink('a', 'b');
+//   g.addLink('a', 'c');
+//   g.addLink('c', 'b');
+//   g.addLink('a', 'g');
+//   g.addLink('f', '1');
+//   g.addLink('f', '2');
+//   g.addLink('f', '3');
+//  g.addLink('f', '4');
+  //return g;
   // // // g.addLink('f', '1');
   // // // g.addLink('f', '2');
   // // // g.addLink('f', '3');
   // // // g.addLink('f', '4');
   // // return g;
   // return require('miserables').create();
-  // var mtxObject = require('ngraph.sparse-collection/HB/662_bus');
-  // var mtxParser = require('ngraph.serialization/mtx');
-  // return mtxParser.loadFromObject(mtxObject);
-  return gen.grid3(50, 10, 6); //70, 10, 4);
+  //  var mtxObject = require('ngraph.sparse-collection/HB/662_bus');
+  //  var mtxParser = require('ngraph.serialization/mtx');
+  //  return mtxParser.loadFromObject(mtxObject);
+  return gen.grid(10, 10); //70, 10, 4);
 }

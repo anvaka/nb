@@ -1,6 +1,8 @@
 import appState from './appState';
 import BBox from './BBox';
 import createLayout from './nbLayout';
+import PointCollection from './PointCollection'
+import LineCollection from './LineCollection'
 
 var wgl = require('w-gl');
 
@@ -9,6 +11,7 @@ export default function createScene(canvas) {
   var graph = appState.getGraph();
   var layout = createLayout(graph, cleanUpSettings(appState.settings));
   var renderCtx;
+  var frameNumber = 0;
 
   scene.setClearColor(12/255, 41/255, 82/255, 1)
 
@@ -51,13 +54,17 @@ export default function createScene(canvas) {
     renderCtx.updatePosition();
 
     scene.renderFrame();
+    //if ((frameNumber % 100) === 0) {
+    // setViewBoxToFitGraph(graph);
+    //}
+    frameNumber += 1;
   }
 
   function initSceneWithGraph(graph) {
     setViewBoxToFitGraph(graph);
     renderCtx = initNodesAndEdges();
 
-    scene.appendChild(renderCtx.edges);
+    scene.appendChild(renderCtx.lines);
     scene.appendChild(renderCtx.nodes);
   }
 
@@ -68,7 +75,6 @@ export default function createScene(canvas) {
       let to = layout.getNodePosition(link.toId);
       bbox.addPoint(from.x, from.y);
       bbox.addPoint(to.x, to.y);
-
     });
     bbox.growBy(bbox.width * 0.1)
     var dpp = window.devicePixelRatio;
@@ -83,53 +89,69 @@ export default function createScene(canvas) {
 
   function initNodesAndEdges() {
     let nodeCount = graph.getNodesCount();
-    let nodes = new wgl.PointCollection(nodeCount + 1);
+    let nodes = new PointCollection(scene.getGL(), {
+      capacity: graph.getNodesCount()
+    });
     let nodeIdToUI = new Map();
     let linkIdToUI = new Map();
 
     graph.forEachNode(node => {
       var point = layout.getNodePosition(node.id);
-      let size = 20;
-      point.size = size
-      point.color = {
-        r: 114/255,
-        g: 248/255,
-        b: 252/255
-      };
-
-      let ui = nodes.add(point, node.id);
-      nodeIdToUI.set(node.id, ui);
+      let size = 0.1;
+      if (node.data && node.data.size) {
+        size = node.data.size;
+      } else {
+        if (!node.data) node.data = {};
+        node.data.size = size;
+      }
+      node.ui = {size, position: [point.x, point.y, point.z || 0], color: node.data.color || 0x72f8fcff};
+      node.uiId = nodes.add(node.ui);
     });
 
-    let edges = new wgl.WireCollection(graph.getLinksCount());
-    edges.color.r = 6/255;
-    edges.color.g = 255/255;
-    edges.color.b = 70/255;
-    edges.color.a = 0.2;
+    let lines = new LineCollection(scene.getGL(), { capacity: graph.getLinksCount() });
 
     graph.forEachLink(link => {
       var from = layout.getNodePosition(link.fromId);
       var to = layout.getNodePosition(link.toId);
-      var ui = edges.add({ from, to });
-      linkIdToUI.set(link.id, ui);
+      var line = { from: [from.x, from.y, from.z || 0], to: [to.x, to.y, to.z || 0], color: 0xFFFFFF10 };
+      link.ui = line;
+      link.uiId = lines.add(link.ui);
     });
+    // let edges = new wgl.WireCollection(graph.getLinksCount());
+    // edges.color.r = 6/255;
+    // edges.color.g = 255/255;
+    // edges.color.b = 70/255;
+    // edges.color.a = 0.2;
+
+    // graph.forEachLink(link => {
+    //   var from = layout.getNodePosition(link.fromId);
+    //   var to = layout.getNodePosition(link.toId);
+    //   var ui = edges.add({ from, to });
+    //   linkIdToUI.set(link.id, ui);
+    // });
 
     return {
       nodes,
-      edges,
+      lines,
       updatePosition
     };
 
     function updatePosition() {
       graph.forEachNode(node => {
         var pos = layout.getNodePosition(node.id);
-        nodeIdToUI.get(node.id).update(pos);
+        let uiPosition = node.ui.position;
+        uiPosition[0] = pos.x;
+        uiPosition[1] = pos.y;
+        nodes.update(node.uiId, node.ui)
       });
 
       graph.forEachLink(link => {
         var fromPos = layout.getNodePosition(link.fromId);
         var toPos = layout.getNodePosition(link.toId);
-        linkIdToUI.get(link.id).update(fromPos, toPos);
+        let {from, to} = link.ui;
+        from[0] = fromPos.x; from[1] = fromPos.y; from[2] = fromPos.z || 0;
+        to[0] = toPos.x; to[1] = toPos.y; to[2] = toPos.z || 0;
+        lines.update(link.uiId, link.ui);
       })
     }
   }

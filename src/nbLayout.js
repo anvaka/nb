@@ -18,14 +18,13 @@ export default function nbLayout(graph, settings) {
   };
 
   var degreeWeighted = true;
-  var desiredWidth = 1300;
-  var desiredHeight = 1300;
-  var decay = 1;
+  var desiredWidth = 10;
+  var desiredHeight = 10;
   var k1 = 0.5;
   var k2 = 0.6;
   var k3 = 0.06;
-  var k4 = 0; // This is not part of the original paper either, Just trying to push neighbors apart
-  var edgeLength = 100;
+  var k4 = 0.1; // This is not part of the original paper either, Just trying to push neighbors apart
+  var edgeLength = 3;
   var stepNumber = 0;
 
   if (settings) {
@@ -100,19 +99,13 @@ export default function nbLayout(graph, settings) {
   }
 
   function step() {
-    k1 *= decay;
-    k2 *= decay;
-    k3 *= decay;
-    k4 *= decay;
-    //if (stepNumber > 40) return;
-    rescale();
-
     minimizeEdgeCrossings();
+    processIncomingMessages();
     minimizeEdgeLengthDifference();
+    processIncomingMessages();
     maximizeAngularResolution();
-
-    if (stepNumber % 10 === 0) rbfMove();
-    // ensurePositions();
+    processIncomingMessages();
+    rbfMove();
     stepNumber += 1;
   }
 
@@ -171,102 +164,88 @@ export default function nbLayout(graph, settings) {
 
   function minimizeEdgeCrossings() {
     graph.forEachLink(function(link) {
-      var currentPos = nodes.get(link.fromId);
-      var otherPos = nodes.get(link.toId);
-      var dx = currentPos.x - otherPos.x;
-      var dy = currentPos.y - otherPos.y;
-      otherPos.incX += otherPos.x + k1 * dx;
-      otherPos.incY += otherPos.y + k1 * dy;
-      otherPos.incLength += 1;
+      var v = nodes.get(link.fromId);
+      var u = nodes.get(link.toId);
+      var dx = u.x - v.x;
+      var dy = u.y - v.y;
 
-      currentPos.incX += currentPos.x - k1 * dx;
-      currentPos.incY += currentPos.y - k1 * dy;
-      currentPos.incLength += 1;
+      v.incX += v.x + k1 * dx;
+      v.incY += v.y + k1 * dy;
+
+      u.incX += u.x - k1 * dx;
+      u.incY += u.y - k1 * dy;
+
+      u.incLength += 1;
+      v.incLength += 1;
     });
 
-    processIncomingMessages();
   }
 
   function minimizeEdgeLengthDifference() {
-    var desLength = 0;
-    graph.forEachLink(function(link) {
-      var currentPos = nodes.get(link.fromId);
-      var otherPos = nodes.get(link.toId);
-      var dx = otherPos.x - currentPos.x;
-      var dy = otherPos.y - currentPos.y;
-      var l = Math.sqrt(dx * dx + dy * dy);
-      if (l > desLength) desLength = l;
-    });
-
-    edgeLength = desLength;
+    let desLength = edgeLength;
 
     graph.forEachLink(function(link) {
-      //currentPos -> u, otherPos -> v
-      var formPos = nodes.get(link.fromId);
-      var toPos = nodes.get(link.toId);
-      var dx = toPos.x - formPos.x;
-      var dy = toPos.y - formPos.y;
+      var u = nodes.get(link.fromId);
+      var v = nodes.get(link.toId);
+      var dx = v.x - u.x;
+      var dy = v.y - u.y;
       var l = Math.sqrt(dx * dx + dy * dy);
       while (l < 1e-10) {
         dx = (random.nextDouble() - 0.5);
         dx = (random.nextDouble() - 0.5);
         l = Math.sqrt(dx * dx + dy * dy);
       }
+      dx /= l;
+      dy /= l;
 
-      // ddx = k2 * (desLength - l) * dx/l;
-      // ddy = k2 * (desLength - l) * dy/l;
+      v.incX += v.x + k2 * (desLength - l) * dx;
+      v.incY += v.y + k2 * (desLength - l) * dy;
+      v.incLength += 1;
 
-
-      // This `tR` coefficient wasn't part of the original paper. I just wanted to scale
-      // edge length based on node degree. It gives a bit better results, but still can be improved.
-      var tR = degreeWeighted ? getDeg(link.toId)/maxDegree : 1;
-      toPos.incX += toPos.x + k2 * (desLength - l) * dx/l * tR;
-      toPos.incY += toPos.y + k2 * (desLength - l) * dy/l * tR;
-      toPos.incLength += 1;
-
-      // same drill with `tF`.
-      var tF = degreeWeighted ? getDeg(link.fromId)/maxDegree : 1;
-      formPos.incX += formPos.x - k2 * (desLength- l) * dx/l * tF;
-      formPos.incY += formPos.y - k2 * (desLength- l) * dy/l  * tF;
-      formPos.incLength += 1;
+      u.incX += u.x - k2 * (desLength - l) * dx;
+      u.incY += u.y - k2 * (desLength - l) * dy;
+      u.incLength += 1;
     });
-
-    processIncomingMessages();
   }
 
   function maximizeAngularResolution() {
+    if (k3 === 0) return;
+
+    graph.forEachNode(function(node) {
+      var currentPos = nodes.get(node.id);
+      currentPos.moved = 0;
+    });
+
     graph.forEachNode(function(node) {
       var currentPos = nodes.get(node.id);
       var neighbors = [];
+      //if (!currentPos.direction) {
+        currentPos.direction = random.nextDouble() > 0.5 ? 1 : -1;
+      // }
+      //if (random.nextDouble() < 0.9) return;
+
       graph.forEachLinkedNode(node.id, function(other) {
         var otherPos = nodes.get(other.id);
         var dx = otherPos.x - currentPos.x;
         var dy = otherPos.y - currentPos.y;
-        var angle = Math.atan2(dy, dx) + Math.PI;
-        // var deg = getDeg(other.id);
+        var angle = Math.atan2(dy, dx) + Math.PI; // 0 .. 2*Pi
         neighbors.push({
           pos: otherPos,
           angle,
-          strength: 1 // otherPos.aggDeg/maxAggDeg
         });
       });
       if (neighbors.length < 2) return;
-      if (node.ascending === undefined) {
-        node.ascending = Math.random() < 0.5;
-      }
-      // node.ascending; //
-      var ascending = node.ascending; // Math.random() > 0.50;
-      neighbors.sort((a, b) => a.angle - b.angle);
+      var direction = currentPos.direction;//random.nextDouble() > 0.5 ? 1 : -1;
+      neighbors.sort((a, b) => (a.angle - b.angle));
 
       var desiredAngle = 2 * Math.PI / neighbors.length;
-      var direction = ascending ? 1 : -1;
 
       var idx = 0;
-      var startFrom = Math.round(Math.random() * (neighbors.length - 1));
+      let startFrom = 0;//Math.floor(random.nextDouble() * neighbors.length);
       while (idx < neighbors.length) {
         var i = (startFrom + idx) % neighbors.length;
-        idx += 1;
         var curr = neighbors[i];
+        idx += 1;
         var next, curAngle;
         var nextIndex = i + direction;
         if (nextIndex === neighbors.length) nextIndex = 0;
@@ -277,18 +256,23 @@ export default function nbLayout(graph, settings) {
 
         if (curAngle < 0) curAngle += 2 * Math.PI;
 
-        if (curAngle < desiredAngle) continue;
-
         var otherPos = curr.pos;
-        var newAngle = curr.strength * k3 * (curAngle - desiredAngle) * direction;
+        if (curAngle < desiredAngle){
+          otherPos.incX += otherPos.x;
+          otherPos.incY += otherPos.y;
+          otherPos.incLength += 1;
+          continue;
+        }
+
+        var newAngle = k3 * (curAngle - desiredAngle) * direction;
+        //curr.angle = newAngle;
         var rPoint = rotate(currentPos, otherPos, newAngle);
-        otherPos.incX += rPoint.x;
-        otherPos.incY += rPoint.y;
+        otherPos.incX += rPoint.x;// - otherPos.x;
+        otherPos.incY += rPoint.y;// - otherPos.y;
         otherPos.incLength += 1;
+        otherPos.moved = true;
       }
     });
-
-    processIncomingMessages();
   }
 
   function rotate(center, point, alpha) {

@@ -22,8 +22,10 @@
     "ngraph.serialization": "0.0.8",
     "ngraph.sparse-collection": "0.0.2",
     "query-state": "^4.2.0",
+    "stylus": "^0.54.8",
+    "stylus-loader": "^3.0.2",
     "vue": "^2.5.2",
-    "w-gl": "^0.3.1"
+    "w-gl": "^0.13.0"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",
