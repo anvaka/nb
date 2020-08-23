@@ -56,7 +56,7 @@
         This is my custom parameter
       </div>
     </div>
-
+  <a href="https://github.com/anvaka/nb" class='source'>Source code</a>
   </div>
 </template>
 
@@ -210,6 +210,13 @@ a {
 .row select {
   width: 100%;
 }
+.source {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  font-size: 12px;
+}
+
 @media screen and (max-width: 500px) {
   #app {
     width: 100%;
