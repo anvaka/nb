@@ -24,7 +24,9 @@ export default function createScene(canvas) {
   };
 
   function updateLayoutParam(settings) {
-    layout.updateSettings(cleanUpSettings(settings));
+    let cleanSettings = cleanUpSettings(settings);
+    appState.setNewSettings(cleanSettings)
+    layout.updateSettings(cleanSettings);
   }
 
   function cleanUpSettings(unsafeSettings) {
@@ -40,6 +42,9 @@ export default function createScene(canvas) {
 
     var k4 = parseFloat(unsafeSettings.k4);
     if (Number.isFinite(k4)) s.k4 = k4;
+
+    var edgeLength = parseFloat(unsafeSettings.edgeLength);
+    if (Number.isFinite(edgeLength)) s.edgeLength = edgeLength;
     return s;
   }
 
@@ -64,6 +69,7 @@ export default function createScene(canvas) {
     setViewBoxToFitGraph(graph);
     renderCtx = initNodesAndEdges();
 
+
     scene.appendChild(renderCtx.lines);
     scene.appendChild(renderCtx.nodes);
   }
@@ -76,7 +82,7 @@ export default function createScene(canvas) {
       bbox.addPoint(from.x, from.y);
       bbox.addPoint(to.x, to.y);
     });
-    bbox.growBy(bbox.width * 0.1)
+    bbox.growBy(bbox.width)
     var dpp = window.devicePixelRatio;
 
     scene.setViewBox({
@@ -109,6 +115,16 @@ export default function createScene(canvas) {
     });
 
     let lines = new LineCollection(scene.getGL(), { capacity: graph.getLinksCount() });
+    // lines.add({
+    //   from: [0, 0, 0],
+    //   to: [0, 1, 0],
+    //   color: 0xFF0000FF
+    // });
+    // lines.add({
+    //   from: [0, 0, 0],
+    //   to: [1, 0, 0],
+    //   color: 0x00FF00FF
+    // })
 
     graph.forEachLink(link => {
       var from = layout.getNodePosition(link.fromId);

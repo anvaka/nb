@@ -1,6 +1,10 @@
 <template>
   <div id="app">
-    <div class='settings'>
+    <div class='row toggle-row'>
+      <a class='value' href="#" @click.prevent='reset'>Reset</a>
+      <a class='value' href="#" @click.prevent='visibleSettings = !visibleSettings'>{{visibleSettings ? 'Hide settings' : 'Show settings'}}</a>
+    </div>
+    <div class='settings' v-if='visibleSettings'>
       <div class="folder-container">
         <div class='deco-border'></div>
         <h3>Graph settings</h3>
@@ -11,6 +15,11 @@
         <select v-model='selectedGraph' :disable='loading'>
           <option v-for="graph in graphs" :key='graph' :value='graph'>{{graph}}</option>
         </select></div>
+      </div>
+
+      <div class="header">Ideal edge length</div>
+      <div class='row'>
+        <div class='value'><input v-model='settings.edgeLength' type='number' step='0.1' min="0"></div>
       </div>
 
       <div class="folder-container">
@@ -38,22 +47,24 @@
       <div class="footer">
         The closer it is to 1, the stronger is the push to place edges around the circle
       </div>
+
+      <div class='header'>Local repulsion (K4)</div>
       <div class='row'>
-        <div class='label'>K4 ()</div>
-        <div class='value'><input v-model='settings.k4'></div>
+        <div class='value'><input v-model='settings.k4' type='number' step='0.1' min="0"></div>
+      </div>
+      <div class="footer">
+        This is my custom parameter
       </div>
     </div>
 
-    <a href="#" @click.prevent='reset'>Reset</a>
   </div>
 </template>
 
 <script>
 import createScene from './scene.js';
 import appState from './appState.js';
-import loadGraph from './loadGraph';
 import getAvailableGraphs from './getAvailableGraphs';
-
+import bus from './bus';
 
 export default {
   name: 'App',
@@ -62,13 +73,17 @@ export default {
   data() {
     return {
       settings: appState.settings,
-      loading: false,
+      loading: appState.loading,
+      selectedGraph: appState.graphName,
       graphs: getAvailableGraphs(),
-      selectedGraph: 'Grid10'
+      visibleSettings: true
     };
   },
   mounted() {
-    this.scene = createScene(document.querySelector('.scene'))
+    bus.on('graph-loaded', this.reset);
+    if (appState.graph) {
+      this.reset();
+    }
   },
   watch: {
     'settings.k1': function(newValue, oldValue) {
@@ -83,12 +98,11 @@ export default {
     'settings.k4': function(newValue, oldValue) {
       this.scene.updateLayoutParam(this.settings);
     },
+    'settings.edgeLength': function(newValue, oldValue) {
+      this.scene.updateLayoutParam(this.settings);
+    },
     selectedGraph(newGraph) {
-      loadGraph(newGraph).then(x => {
-        this.scene.dispose();
-        appState.setGraph(x);
-        this.scene = createScene(document.querySelector('.scene'));
-      });
+      appState.setGraph(newGraph)
     }
   },
   beforeDestroy() {
@@ -96,13 +110,11 @@ export default {
       this.scene.dispose();
       this.scene = null;
     }
+    bus.off('graph-loaded', this.reset);
   },
   methods: {
-    updateK3() {
-      console.log('k3');
-    },
     reset() {
-      this.scene.dispose();
+      if (this.scene) this.scene.dispose();
       this.scene = createScene(document.querySelector('.scene'));
     }
   }
@@ -119,11 +131,28 @@ background-color = #0D2647;
   -moz-osx-font-smoothing: grayscale;
   position: absolute;
   color: rgb(244, 244, 244);
+  width: 400px;
 }
 a {
   color: rgb(244, 244, 244);
   text-decoration: none;
-  border-bottom: 1px dashed;
+}
+.toggle-row {
+  height: 32px;
+  border: 1px solid;
+  display: flex;
+  background: background-color;
+  a {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-self: stretch;
+    &:last-child {
+      border-left: 1px solid;
+    }
+
+  }
 }
 
 .folder-container {
@@ -149,7 +178,6 @@ a {
 }
 .settings {
   padding: 8px;
-  max-width: 320px;
   background: background-color;
 }
 .header {
@@ -181,5 +209,12 @@ a {
 }
 .row select {
   width: 100%;
+}
+@media screen and (max-width: 500px) {
+  #app {
+    width: 100%;
+    max-width: 100%;
+  }
+  
 }
 </style>

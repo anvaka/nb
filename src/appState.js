@@ -1,17 +1,15 @@
 const gen = require('ngraph.generators');
 const createGraph = require('ngraph.graph');
+import loadGraph from './loadGraph';
+import bus from './bus';
 
 var qs = require('query-state')({
   k1: 0.99,
-  k2: 1,
-  k3: 0.1,
-  k4: 0,
-
-  // graph to load by default
-  graph: 'miserables',
-  p0: 10,
-  p1: 10,
-  p2: 10
+  k2: 0.3,
+  k3: 0,
+  k4: 0.2,
+  edgeLength: 2,
+  graphName: 'Grid10',
 }, {
   useSearch: true
 });
@@ -22,50 +20,36 @@ var settings = qs.get();
 const appState = {
   getGraph,
   setGraph,
-  graph: gen.grid(10, 10),
+  setNewSettings,
+  graphName: settings.graphName,
+  graph: null,
   settings: {
     k1: settings.k1, 
     k2: settings.k2,
     k3: settings.k3,
-    k4: settings.k4 
+    k4: settings.k4 ,
+    edgeLength: settings.edgeLength
   },
 }
 
-qs.onChange(function(appState) {
-  // TODO: Implement me
-});
+setGraph(appState.graphName);
+
+function setNewSettings(settings) {
+  qs.set(settings)
+  appState.settings = settings;
+}
 
 export default appState
 
-function setGraph(newGraph) {
-  appState.graph = newGraph;
+function setGraph(graphName) {
+  loadGraph(graphName).then(graph => {
+    appState.graphName = graphName;
+    appState.graph = graph;
+    qs.set('graphName', graphName);
+    bus.fire('graph-loaded', graph)
+  });
 }
 
 function getGraph() {
   return appState.graph;
-  // var generator = gen[settings.graph];
-  // if (generator) {
-  //   return generator(settings.p0, settings.p1, settings.p2);
-  // }
-  //return require('miserables').create()
-//   var g = createGraph();
-//   g.addLink('a', 'b');
-//   g.addLink('a', 'c');
-//   g.addLink('c', 'b');
-//   g.addLink('a', 'g');
-//   g.addLink('f', '1');
-//   g.addLink('f', '2');
-//   g.addLink('f', '3');
-//  g.addLink('f', '4');
-  //return g;
-  // // // g.addLink('f', '1');
-  // // // g.addLink('f', '2');
-  // // // g.addLink('f', '3');
-  // // // g.addLink('f', '4');
-  // // return g;
-  // return require('miserables').create();
-  //  var mtxObject = require('ngraph.sparse-collection/HB/662_bus');
-  //  var mtxParser = require('ngraph.serialization/mtx');
-  //  return mtxParser.loadFromObject(mtxObject);
-  return gen.grid(10, 10); //70, 10, 4);
 }

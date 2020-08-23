@@ -3,7 +3,7 @@
 
 import BBox from './BBox';
 import KDBush from 'kdbush';
-
+import {GridIndex} from '../test/GridIndex';
 
 // The algorithm is inspired by this paper https://ccl.northwestern.edu/2018/galan2018.pdf
 // I modified a few things, and mostly using this to test ideas.
@@ -26,10 +26,12 @@ export default function nbLayout(graph, settings) {
   var k4 = 0.1; // This is not part of the original paper either, Just trying to push neighbors apart
   var edgeLength = 3;
   var stepNumber = 0;
+  var points;
 
   if (settings) {
     updateSettings(settings);
   }
+  var index = new GridIndex(edgeLength);
   var nodes = new Map();
   var nodeArr = [];
   var maxDegree = 0;
@@ -50,6 +52,7 @@ export default function nbLayout(graph, settings) {
     if (Number.isFinite(newSettings.k2)) k2 = newSettings.k2;
     if (Number.isFinite(newSettings.k3)) k3 = newSettings.k3;
     if (Number.isFinite(newSettings.k4)) k4 = newSettings.k4;
+    if (Number.isFinite(newSettings.edgeLength)) edgeLength = newSettings.edgeLength;
   }
 
   function initLayout() {
@@ -65,6 +68,7 @@ export default function nbLayout(graph, settings) {
       };
       nodes.set(node.id, pos)
       nodeArr.push(pos);
+      index.add(pos);
     });
 
     graph.forEachLink(function(link) {
@@ -156,6 +160,7 @@ export default function nbLayout(graph, settings) {
     nodes.forEach(function(pos, key) {
       pos.x = (pos.incX + pos.x)/(pos.incLength + 1);
       pos.y = (pos.incY + pos.y)/(pos.incLength + 1);
+      if (Number.isNaN(pos.x)) debugger;
       pos.incLength = 0;
       pos.incX = 0;
       pos.incY = 0;
@@ -289,7 +294,7 @@ export default function nbLayout(graph, settings) {
   }
 
   function rbfMove() {
-    const points = new KDBush(nodeArr, p => p.x, p => p.y);
+    points = new KDBush(nodeArr, p => p.x, p => p.y);
     nodeArr.forEach((pos, idx) => {
       var sx = 0, sy = 0, count = 0;
       var neighbors = points.within(pos.x, pos.y, edgeLength);
@@ -300,19 +305,24 @@ export default function nbLayout(graph, settings) {
         var dx = pos.x - other.x;
         var dy = pos.y - other.y;
         var l = Math.sqrt(dx * dx + dy * dy);
-        if (l < 1e-10) l = 1;
-        var nx = dx/l
-        var ny = dy/l
+
+        while (l < 1e-10) {
+          dx = (random.nextDouble() - 0.5);
+          dx = (random.nextDouble() - 0.5);
+          l = Math.sqrt(dx * dx + dy * dy);
+        }
+        var nx = dx/(l)
+        var ny = dy/(l)
 
         sx += nx * edgeLength;
         sy += ny * edgeLength;
         count += 1;
       });
-      if (neighbors.length === 0) return;
+      if (count === 0) return;
 
       pos.incX = k4 * sx/count;
       pos.incY = k4 * sy/count;
-      pos.incLength = 0; //neighbors.length - 1;
+      pos.incLength = 0;
     });
 
     processIncomingMessages();

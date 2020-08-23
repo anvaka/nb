@@ -7,7 +7,7 @@ let cache = simpleCache();
 export default function loadGraph(name) {
   if (name === 'Miserables') return Promise.resolve(miserables);
   if (name === 'Binary') return Promise.resolve(generate.balancedBinTree(10));
-  if (name === 'Grid10') return Promise.resolve(generate.grid(10, 10));
+  if (name === 'Grid10') return Promise.resolve(generate.grid(19, 5));
 
   let mtxObject = cache.get(name);
   if (mtxObject) return Promise.resolve(renderGraph(mtxObject.links, mtxObject.recordsPerEdge));
