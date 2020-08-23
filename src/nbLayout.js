@@ -1,12 +1,8 @@
-// PLEASE, ignore this file. I'm just messing here. It does not represent anything
-// neither it is indicative of my ability to write code :).
-
 import BBox from './BBox';
 import KDBush from 'kdbush';
-import {GridIndex} from '../test/GridIndex';
 
 // The algorithm is inspired by this paper https://ccl.northwestern.edu/2018/galan2018.pdf
-// I modified a few things, and mostly using this to test ideas.
+// I modified it by adding a new local repulsive step, that moves nodes apart.
 export default function nbLayout(graph, settings) {
   const random = require('ngraph.random').random(42)
 
@@ -31,16 +27,10 @@ export default function nbLayout(graph, settings) {
   if (settings) {
     updateSettings(settings);
   }
-  var index = new GridIndex(edgeLength);
+
   var nodes = new Map();
   var nodeArr = [];
-  var maxDegree = 0;
   var maxAggDeg = 0;
-
-  graph.forEachNode(function(n) {
-    var nodeDeg = getDeg(n.id);
-    if (nodeDeg > maxDegree) maxDegree = nodeDeg;
-  });
 
   initLayout();
   
@@ -63,31 +53,13 @@ export default function nbLayout(graph, settings) {
         incX: 0,
         incY: 0,
         incLength: 0,
-        aggDeg: 0,
-        id: node.id
+        id: node.id,
+        degree: getDeg(node)
       };
       nodes.set(node.id, pos)
       nodeArr.push(pos);
-      index.add(pos);
     });
 
-    graph.forEachLink(function(link) {
-      var fromDeg = getDeg(link.fromId);
-      var toDeg = getDeg(link.fromId);
-      var from = nodes.get(link.fromId);
-      var to = nodes.get(link.toId);
-
-      from.aggDeg += toDeg;
-      from.incLength += 1;
-      to.aggDeg += fromDeg;
-      to.incLength += 1;
-    });
-
-    nodes.forEach(node => {
-      if (node.incLength) node.aggDeg /= node.incLength;
-      if (node.aggDeg > maxAggDeg) maxAggDeg = node.aggDeg;
-      node.incLength = 0;
-    })
     rescale();
   }
 
@@ -109,7 +81,7 @@ export default function nbLayout(graph, settings) {
     processIncomingMessages();
     maximizeAngularResolution();
     processIncomingMessages();
-    rbfMove();
+    repulseNeighbors();
     stepNumber += 1;
   }
 
@@ -143,8 +115,7 @@ export default function nbLayout(graph, settings) {
     });
   }
 
-  function getDeg(id) {
-    var n = graph.getNode(id);
+  function getDeg(n) {
     if (n && n.links) return n.links.length;
     return 0;
   }
@@ -160,7 +131,6 @@ export default function nbLayout(graph, settings) {
     nodes.forEach(function(pos, key) {
       pos.x = (pos.incX + pos.x)/(pos.incLength + 1);
       pos.y = (pos.incY + pos.y)/(pos.incLength + 1);
-      if (Number.isNaN(pos.x)) debugger;
       pos.incLength = 0;
       pos.incX = 0;
       pos.incY = 0;
@@ -187,7 +157,7 @@ export default function nbLayout(graph, settings) {
   }
 
   function minimizeEdgeLengthDifference() {
-    let desLength = edgeLength;
+    let desiredLength = edgeLength;
 
     graph.forEachLink(function(link) {
       var u = nodes.get(link.fromId);
@@ -203,12 +173,12 @@ export default function nbLayout(graph, settings) {
       dx /= l;
       dy /= l;
 
-      v.incX += v.x + k2 * (desLength - l) * dx;
-      v.incY += v.y + k2 * (desLength - l) * dy;
+      v.incX += v.x + k2 * (desiredLength - l) * dx;
+      v.incY += v.y + k2 * (desiredLength - l) * dy;
       v.incLength += 1;
 
-      u.incX += u.x - k2 * (desLength - l) * dx;
-      u.incY += u.y - k2 * (desLength - l) * dy;
+      u.incX += u.x - k2 * (desiredLength - l) * dx;
+      u.incY += u.y - k2 * (desiredLength - l) * dy;
       u.incLength += 1;
     });
   }
@@ -224,10 +194,11 @@ export default function nbLayout(graph, settings) {
     graph.forEachNode(function(node) {
       var currentPos = nodes.get(node.id);
       var neighbors = [];
-      //if (!currentPos.direction) {
+      // you can uncomment `if` statement below to keep node angle 
+      // traversal direction fixed for the layout time
+      // if (!currentPos.direction) {
         currentPos.direction = random.nextDouble() > 0.5 ? 1 : -1;
       // }
-      //if (random.nextDouble() < 0.9) return;
 
       graph.forEachLinkedNode(node.id, function(other) {
         var otherPos = nodes.get(other.id);
@@ -240,13 +211,13 @@ export default function nbLayout(graph, settings) {
         });
       });
       if (neighbors.length < 2) return;
-      var direction = currentPos.direction;//random.nextDouble() > 0.5 ? 1 : -1;
+      var direction = currentPos.direction;
       neighbors.sort((a, b) => (a.angle - b.angle));
 
       var desiredAngle = 2 * Math.PI / neighbors.length;
 
       var idx = 0;
-      let startFrom = 0;//Math.floor(random.nextDouble() * neighbors.length);
+      let startFrom =0;//Math.floor(random.nextDouble() * neighbors.length);
       while (idx < neighbors.length) {
         var i = (startFrom + idx) % neighbors.length;
         var curr = neighbors[i];
@@ -270,10 +241,9 @@ export default function nbLayout(graph, settings) {
         }
 
         var newAngle = k3 * (curAngle - desiredAngle) * direction;
-        //curr.angle = newAngle;
         var rPoint = rotate(currentPos, otherPos, newAngle);
-        otherPos.incX += rPoint.x;// - otherPos.x;
-        otherPos.incY += rPoint.y;// - otherPos.y;
+        otherPos.incX += rPoint.x;
+        otherPos.incY += rPoint.y;
         otherPos.incLength += 1;
         otherPos.moved = true;
       }
@@ -293,7 +263,7 @@ export default function nbLayout(graph, settings) {
     }
   }
 
-  function rbfMove() {
+  function repulseNeighbors() {
     points = new KDBush(nodeArr, p => p.x, p => p.y);
     nodeArr.forEach((pos, idx) => {
       var sx = 0, sy = 0, count = 0;
@@ -325,13 +295,9 @@ export default function nbLayout(graph, settings) {
       pos.incLength = 0;
     });
 
-    processIncomingMessages();
+    nodeArr.forEach((pos, idx) => {
+      pos.x += pos.incX 
+      pos.y += pos.incY 
+    })
   }
-
-}
-
-function rbf(r, eps = 0.008) {
-  //return 1./(1 + Math.abs(r));
-  //return 1./(1 + r * r);
-  return Math.exp(-r * r * eps);
 }
