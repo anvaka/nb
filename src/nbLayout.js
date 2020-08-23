@@ -264,12 +264,14 @@ export default function nbLayout(graph, settings) {
   }
 
   function repulseNeighbors() {
+    // Here we are going to move away from our neighbors.
+    // This seem to lead to faster convergence: https://www.youtube.com/watch?v=gsQGODAGpSw
     points = new KDBush(nodeArr, p => p.x, p => p.y);
     nodeArr.forEach((pos, idx) => {
       var sx = 0, sy = 0, count = 0;
       var neighbors = points.within(pos.x, pos.y, edgeLength);
       neighbors.forEach(otherIndex => {
-        if (otherIndex === idx) return;
+        if (otherIndex === idx) return; // Ignore the node itself
 
         var other = nodeArr[otherIndex];
         var dx = pos.x - other.x;
@@ -292,7 +294,6 @@ export default function nbLayout(graph, settings) {
 
       pos.incX = k4 * sx/count;
       pos.incY = k4 * sy/count;
-      pos.incLength = 0;
     });
 
     nodeArr.forEach((pos, idx) => {

@@ -76,7 +76,7 @@ export default {
       loading: appState.loading,
       selectedGraph: appState.graphName,
       graphs: getAvailableGraphs(),
-      visibleSettings: true
+      visibleSettings: window.innerWidth > 500
     };
   },
   mounted() {
