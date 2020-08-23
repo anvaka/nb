@@ -1,7 +1,11 @@
-const gen = require('ngraph.generators');
-const createGraph = require('ngraph.graph');
 import loadGraph from './loadGraph';
 import bus from './bus';
+import fileDrop from './fileDrop.js';
+import fromDot from 'ngraph.fromdot'
+import fromJson from 'ngraph.fromjson'
+
+const gen = require('ngraph.generators');
+const createGraph = require('ngraph.graph');
 
 var qs = require('query-state')({
   k1: 0.99,
@@ -52,4 +56,43 @@ function setGraph(graphName) {
 
 function getGraph() {
   return appState.graph;
+}
+
+// When they drop a `.dot` file into the browser - let's load it.
+fileDrop(document.body, loadDroppedGraph);
+
+function loadDroppedGraph(files) {
+  let file = files[0];
+
+  var reader = new FileReader();
+  reader.readAsText(file, "UTF-8");
+  reader.onload = e => {
+    let content = e.target.result;
+    let graph = tryDot(content) || tryJson(content);
+    if (graph) {
+      appState.graph = graph;
+      bus.fire('graph-loaded', graph);
+    }
+  }
+  reader.onerror = (e) => {
+    //eslint-disable-next-line
+    console.log('error loading dot file: ', e)
+  };
+
+  function tryDot(fileContent) {
+    try {
+      return fromDot(fileContent);
+    } catch (e) {
+      //eslint-disable-next-line
+      console.log('error loading dot file: ', e)
+    }
+  }
+  function tryJson(fileContent) {
+    try {
+      return fromJson(JSON.parse(fileContent));
+    } catch (e) {
+      //eslint-disable-next-line
+      console.log('error loading JSON: ', e)
+    }
+  }
 }

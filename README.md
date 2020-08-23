@@ -9,7 +9,9 @@ The hardest part of the algorithm right now is finding correct coefficients for 
 passing step, but still I love the algorithm for its simplicity and potential for extensions.
 It serves well as a starting point to new exploration/algorithms.
 
-You can launch the playground here: http://anvaka.github.io/nb/
+* You can launch the playground here: http://anvaka.github.io/nb/
+* You can select a predefined graph or you can drop a dot file straight into the browser window to load it
+
 
 ## Local development
 
@@ -31,7 +33,7 @@ where the website is running with hot reload (you change the code - it updates t
 ## Support
 
 You can always reach out to me [on twitter](https://twitter.com/anvaka) if you have any questions.
-If you love this library, please consider sponsoring it https://github.com/sponsors/anvaka .
+If you love this code, please consider sponsoring it https://github.com/sponsors/anvaka .
 
 ## License
 
