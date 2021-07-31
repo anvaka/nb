@@ -5,8 +5,8 @@ test('it can add point', t => {
   const index = new GridIndex(10, 10);
   let pt = {x: 10, y: 10};
   index.add(pt);
-  t.equals(pt.cell.pointCount, 1, 'one point found');
-  t.equals(pt.cell.points[0], pt, 'and it is correct');
+  t.equal(pt.cell.pointCount, 1, 'one point found');
+  t.equal(pt.cell.points[0], pt, 'and it is correct');
   t.end();
 })
 
@@ -20,7 +20,7 @@ test('it can find neighbors', t => {
   index.forEachNeighbor(srcPoint, other => {
     visited += 1;
   });
-  t.equals(visited, 1, 'one point found');
+  t.equal(visited, 1, 'one point found');
   t.end();
 })
 
@@ -37,6 +37,6 @@ test('it can move points', t => {
   index.forEachNeighbor(srcPoint, other => {
     visited += 1;
   });
-  t.equals(visited, 2, 'two points should be in vicinity');
+  t.equal(visited, 2, 'two points should be in vicinity');
   t.end();
 })
