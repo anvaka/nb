@@ -25,7 +25,7 @@
     "stylus": "^0.54.8",
     "stylus-loader": "^3.0.2",
     "vue": "^2.5.2",
-    "w-gl": "^0.13.0"
+    "w-gl": "^0.21.1"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",
