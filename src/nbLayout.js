@@ -3,8 +3,10 @@ import KDBush from 'kdbush';
 
 // The algorithm is inspired by this paper https://ccl.northwestern.edu/2018/galan2018.pdf
 // I modified it by adding a new local repulsive step, that moves nodes apart.
+import ngraphRandom from 'ngraph.random'
+
 export default function nbLayout(graph, settings) {
-  const random = require('ngraph.random').random(42)
+  const random = ngraphRandom.random(42)
 
   var api = {
     getNodePosition,

@@ -3,11 +3,11 @@ import bus from './bus';
 import fileDrop from './fileDrop.js';
 import fromDot from 'ngraph.fromdot'
 import fromJson from 'ngraph.fromjson'
+import gen from 'ngraph.generators'
+import createGraph from 'ngraph.graph'
+import createQueryState from 'query-state'
 
-const gen = require('ngraph.generators');
-const createGraph = require('ngraph.graph');
-
-var qs = require('query-state')({
+var qs = createQueryState({
   k1: 0.99,
   k2: 0.3,
   k3: 0,

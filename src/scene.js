@@ -3,8 +3,7 @@ import BBox from './BBox';
 import createLayout from './nbLayout';
 import PointCollection from './PointCollection'
 import LineCollection from './LineCollection'
-
-var wgl = require('w-gl');
+import * as wgl from 'w-gl'
 
 export default function createScene(canvas) {
   var scene = wgl.scene(canvas);
